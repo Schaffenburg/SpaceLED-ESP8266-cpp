@@ -1,93 +1,74 @@
-
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
- 
-// WiFi information
-const char WIFI_SSID[] = "KellerkindGast";
-const char WIFI_PSK[] = "1234567890";
- 
-// Remote site information
-const char* http_site = "status.schaffenburg.org";
-const int http_port = 80;
+#include <Adafruit_NeoPixel.h>
 
-// Global variables
-WiFiClient client;
- 
-void setup() {
+#define PIN 15
+
+const char* ssid     = "KellerkindGast";  
+const char* password = "1234567890";
+
+const char* host     = "status.schaffenburg.org"; // Your domain  
+String path          = "/index.html";  
+const int pin        = 2;
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(60,PIN,NEO_RGB + NEO_KHZ800);
+
+void setup() {  
+  strip.begin();
+  strip.setPixelColor(0,120,120,120);
+  strip.show();
   
-  // Set up serial console to read web page
   Serial.begin(115200);
-  
-  // Wait for Serial Port to be ready
-  while (!Serial) {
-    delay(1);
-  }
- 
-  // Connect to WiFi
-  connectWiFi();
-  
-    
-}
- 
-void loop() {
-  // Attempt to connect to website 
-  if ( !getPage() ) {
-    Serial.println("GET request failed");
-  }
-  
-  while(!client.available()) {
-    delay(1);
-  }
-  // If there are incoming bytes, print them
-  if( client.available() ) {
 
-   
-   while(client.available()) {
-    String line = client.readStringUntil('\n');
-    Serial.println(line);
-    delay(2000);
-   }
-  
-  
-  }
-  client.flush();
+  delay(10);
 
-  
-}
- 
-// Attempt to connect to Wifi
-void connectWiFi() {
-
-  Serial.println();
-  // Set WiFi mode to station (client)
-  WiFi.mode(WIFI_STA);
-  
-  // Initiate connection with SSID and PSK
-  WiFi.begin(WIFI_SSID, WIFI_PSK);
-
-  while(WiFi.status() != WL_CONNECTED) {
+  WiFi.begin(ssid, password);
+  int wifi_ctr = 0;
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
   }
-  Serial.println();
-  Serial.println("WiFi connected");
-  
+
 }
- 
-// Perform an HTTP GET request to a remote page
-bool getPage() {
-  
-  // Attempt to make a connection to the remote server
-  if ( !client.connect(http_site, http_port) ) {
-    return false;
+
+void loop() {  
+  WiFiClient client;
+  const int httpPort = 80;
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
   }
-  
-  // Make an HTTP GET request
-  client.println("GET /index.html HTTP/1.1");
-  client.print("Host: ");
-  client.println(http_site);
-  client.println("Connection: close");
-  client.println();
-  
-  return true;
+
+  client.print(String("GET ") + path + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" + 
+               "Connection: keep-alive\r\n\r\n");
+
+  delay(500);
+
+  String section="header";
+  while(client.available()){
+    String line = client.readStringUntil('\r');
+    
+    if (section=="header") { 
+      if (line=="\n") {  
+        section="status";
+      }
+    }
+    else if (section=="status") {
+      if(line.substring(1,2) == "v") {
+        Serial.println("zu");
+        strip.setPixelColor(0,255,0,0);
+        strip.show();
+        delay(30000);
+      } else if (line.substring(1,2) == "o") {
+        Serial.println("offen");
+        strip.setPixelColor(0,0,255,0);
+        strip.show();
+        delay(300000); 
+      } else {
+        Serial.println("gestört");
+        strip.setPixelColor(0,0,0,255);
+        strip.show();
+        delay(60000);
+      }
+    }
+  }
 }
