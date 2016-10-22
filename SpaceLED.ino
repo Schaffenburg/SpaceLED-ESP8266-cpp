@@ -1,8 +1,6 @@
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-
-#define D8 15
  
 // WiFi information
 const char WIFI_SSID[] = "KellerkindGast";
@@ -16,7 +14,7 @@ const int http_port = 80;
 WiFiClient client;
  
 void setup() {
-  delay(20000);
+  
   // Set up serial console to read web page
   Serial.begin(115200);
   
@@ -28,14 +26,15 @@ void setup() {
   // Connect to WiFi
   connectWiFi();
   
-  // Attempt to connect to website
-  if ( !getPage() ) {
-    Serial.println("GET request failed");
-  }
+    
 }
  
 void loop() {
-
+  // Attempt to connect to website 
+  if ( !getPage() ) {
+    Serial.println("GET request failed");
+  }
+  
   while(!client.available()) {
     delay(1);
   }
@@ -44,21 +43,22 @@ void loop() {
 
    
    while(client.available()) {
-    String line = client.readStringUntil('\r');
+    String line = client.readStringUntil('\n');
     Serial.println(line);
     delay(2000);
    }
   
-  client.flush();
-  }
   
+  }
+  client.flush();
 
   
 }
  
 // Attempt to connect to Wifi
 void connectWiFi() {
- 
+
+  Serial.println();
   // Set WiFi mode to station (client)
   WiFi.mode(WIFI_STA);
   
@@ -69,6 +69,7 @@ void connectWiFi() {
     delay(500);
     Serial.print(".");
   }
+  Serial.println();
   Serial.println("WiFi connected");
   
 }
